@@ -11,6 +11,8 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
     using BitMaps for BitMaps.BitMap;
     using Checkpoints for Checkpoints.Trace160;
 
+    uint96 private totalSupply;
+
     Checkpoints.Trace160 private _sequentialOwnership;
     BitMaps.BitMap private _sequentialBurn;
 
@@ -57,7 +59,7 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
         address owner = super._ownerOf(tokenId);
 
         // If token is owned by the core, or beyond consecutive range, return base value
-        if (owner != address(0) || tokenId > type(uint96).max || tokenId < _firstConsecutiveId()) {
+        if (owner != address(0) || tokenId > _nextConsecutiveId() || tokenId < _firstConsecutiveId()) {
             return owner;
         }
 
@@ -87,9 +89,6 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
 
         // minting a batch of size 0 is a no-op
         if (batchSize > 0) {
-            if (address(this).code.length > 0) {
-                revert ERC721ForbiddenBatchMint();
-            }
             if (to == address(0)) {
                 revert ERC721InvalidReceiver(address(0));
             }
@@ -99,10 +98,10 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
                 revert ERC721ExceededMaxBatchMint(batchSize, maxBatchSize);
             }
 
-            // hook before
+            totalSupply += batchSize;
             _beforeTokenTransfer(address(0), to, next, batchSize);
 
-            // push an ownership checkpoint & emit event
+            // push an ownership checkpoint & emit event(s)
             uint96 last = next + batchSize - 1;
             _sequentialOwnership.push(last, uint160(to));
 
@@ -110,26 +109,36 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
             // is attributing ownership of `batchSize` new tokens to account `to`.
             __unsafe_increaseBalance(to, batchSize);
 
-            emit ConsecutiveTransfer(next, last, address(0), to);
-
-            // hook after
-            _afterTokenTransfer(address(0), to, next, batchSize);
+            if (address(this).code.length > 0) {
+                for (uint256 i; i < batchSize; i++) {
+                    emit Transfer(address(0), to, next + i);
+                }
+            } else {
+                emit ConsecutiveTransfer(next, last, address(0), to);
+            }
         }
-
+        _afterTokenTransfer(address(0), to, next, batchSize);
         return next;
     }
 
+    function _mint(address, uint256) internal virtual override {
+        revert("reverting for now");
+    }
     /**
      * @dev See {ERC721-_mint}. Override version that restricts normal minting to after construction.
      *
      * WARNING: Using {ERC721Consecutive} prevents using {_mint} during construction in favor of {_mintConsecutive}.
      * After construction, {_mintConsecutive} is no longer available and {_mint} becomes available.
      */
-    function _mint(address to, uint256 tokenId) internal virtual override {
+
+    function _mint(address to) internal virtual {
         if (address(this).code.length == 0) {
             revert ERC721ForbiddenMint();
         }
-        super._mint(to, tokenId);
+
+        uint256 nextId = _nextConsecutiveId();
+        totalSupply++;
+        super._mint(to, nextId);
     }
 
     /**
@@ -165,8 +174,7 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
      * if no consecutive tokenId has been minted before.
      */
     function _nextConsecutiveId() private view returns (uint96) {
-        (bool exists, uint96 latestId,) = _sequentialOwnership.latestCheckpoint();
-        return exists ? latestId + 1 : _firstConsecutiveId();
+        return totalSupply + _firstConsecutiveId();
     }
 }
 
