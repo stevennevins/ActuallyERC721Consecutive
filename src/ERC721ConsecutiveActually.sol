@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {IERC2309} from "openzeppelin-contracts/contracts/interfaces/IERC2309.sol";
-import {Checkpoints} from "openzeppelin-contracts/contracts/utils/Checkpoints.sol";
 import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
+import {Checkpoints} from "src/Checkpoints.sol";
 
 abstract contract ERC721Consecutive is IERC2309, ERC721 {
     using BitMaps for BitMaps.BitMap;
