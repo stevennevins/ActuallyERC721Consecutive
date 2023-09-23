@@ -1,11 +1,10 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.20;
 
-import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {ERC721} from "openzeppelin-contracts/contracts/token/ERC721/ERC721.sol";
 import {IERC2309} from "openzeppelin-contracts/contracts/interfaces/IERC2309.sol";
 import {BitMaps} from "openzeppelin-contracts/contracts/utils/structs/BitMaps.sol";
-import {Checkpoints} from "src/Checkpoints.sol";
+import {Checkpoints} from "openzeppelin-contracts/contracts/utils/structs/Checkpoints.sol";
 
 abstract contract ERC721Consecutive is IERC2309, ERC721 {
     using BitMaps for BitMaps.BitMap;
@@ -15,14 +14,6 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
 
     Checkpoints.Trace160 private _sequentialOwnership;
     BitMaps.BitMap private _sequentialBurn;
-
-    error ERC721InvalidReceiver(address receiver);
-    /**
-     * @dev Batch mint is restricted to the constructor.
-     * Any batch mint not emitting the {IERC721-Transfer} event outside of the constructor
-     * is non-ERC721 compliant.
-     */
-    error ERC721ForbiddenBatchMint();
 
     /**
      * @dev Exceeds the max amount of mints per batch.
@@ -99,7 +90,7 @@ abstract contract ERC721Consecutive is IERC2309, ERC721 {
             }
 
             totalSupply += batchSize;
-            _beforeTokenTransfer(address(0), to, next, batchSize);
+            // _beforeTokenTransfer(address(0), to, next, batchSize);
 
             // push an ownership checkpoint & emit event(s)
             uint96 last = next + batchSize - 1;
